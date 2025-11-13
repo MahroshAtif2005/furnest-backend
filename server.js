@@ -1,89 +1,93 @@
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+require('dotenv').config();
 
+// Import the User model
+const User = require('./models/User');
+
+// --- Initialize Express ---
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
-// Middleware
+// --- Middleware ---
 app.use(cors());
 app.use(express.json());
 
-// In-memory "database" (will reset when server restarts – fine for now)
-const users = [];
+// --- Connect to MongoDB ---
+async function connectDB() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error.message);
+    process.exit(1);
+  }
+}
+connectDB();
 
-// Test route
+// --- Test route ---
 app.get('/', (req, res) => {
   res.send('FurNest backend is running 🐾');
 });
 
-// SIGNUP ROUTE
-app.post('/signup', (req, res) => {
-  const { fullName, email, password } = req.body;
+// --- SIGNUP ROUTE ---
+app.post('/signup', async (req, res) => {
+  try {
+    console.log('/signup hit with body:', req.body);
 
-  console.log('Incoming signup data:', fullName, email, password);
+    const { fullName, email, password } = req.body;
 
-  // Basic validation
-  if (!fullName || !email || !password) {
-    return res.status(400).json({
-      message: 'All fields (fullName, email, password) are required.',
+    if (!fullName || !email || !password) {
+      console.log('❌ Missing fields');
+      return res.status(400).json({
+        message: 'All fields (fullName, email, password) are required.',
+      });
+    }
+
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    console.log('🔎 Existing user check result:', existing);
+
+    if (existing) {
+      console.log('⚠️ User already exists');
+      return res.status(409).json({
+        message: 'An account with this email already exists. Please log in instead.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    console.log('Password hashed');
+
+    const user = await User.create({
+      fullName: fullName.trim(),
+      email: email.toLowerCase().trim(),
+      passwordHash,
     });
-  }
 
-  // Check for existing user by email
-  const existingUser = users.find((user) => user.email === email);
+    const count = await User.countDocuments();
+    console.log('✅ User created in MongoDB:', user);
+    console.log(' Total users in collection:', count);
 
-  if (existingUser) {
-    console.log('⚠️ Signup blocked: email already exists:', email);
-    return res.status(409).json({
-      message: 'An account with this email already exists. Please log in instead.',
+    return res.status(201).json({
+      message: 'Signup successful! Welcome to FurNest 🐾',
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+      },
     });
+  } catch (err) {
+    console.error(' Signup error:', err);
+    return res.status(500).json({ message: 'Signup failed. Please try again later.' });
   }
-
-  // Save new user
-  const newUser = { fullName, email, password };
-  users.push(newUser);
-
-  console.log('Users array now:', users);
-
-  return res.status(201).json({
-    message: 'Signup successful! Welcome to FurNest 🐾',
-    user: {
-      fullName,
-      email,
-    },
-  });
 });
 
-// LOGIN ROUTE (for the next steps)
-app.post('/login', (req, res) => {
-  const { email, password } = req.body;
 
-  console.log('Incoming login data:', email, password);
-
-  if (!email || !password) {
-    return res.status(400).json({
-      message: 'Email and password are required.',
-    });
-  }
-
-  const user = users.find((u) => u.email === email);
-
-  if (!user || user.password !== password) {
-    return res.status(401).json({
-      message: 'Invalid email or password.',
-    });
-  }
-
-  return res.status(200).json({
-    message: 'Login successful!',
-    user: {
-      fullName: user.fullName,
-      email: user.email,
-    },
-  });
-});
-
-// Start server
+// --- Start the server ---
 app.listen(PORT, () => {
   console.log(`Server is listening on http://localhost:${PORT}`);
 });
