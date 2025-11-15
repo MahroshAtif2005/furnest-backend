@@ -1,10 +1,24 @@
-# Furnest Signup Backend 🐾
+A lightweight Node.js + Express backend connected to MongoDB Atlas, built to power user signup and login for the FurNest pet adoption app.
 
-A lightweight temporary backend built with **Node.js** and **Express** to test user signup and login functionality for the Furnest pet adoption app.
-This server uses an in-memory array (`users[]`) to store data temporarily — meaning all users reset when the server restarts. It’s ideal for testing frontend integration before connecting to a real database (e.g. MongoDB).
+This backend now stores real user data safely and permanently in the database (instead of using a temporary in-memory array). 
 
-- Basic user signup with name, email, and password
-- Basic login endpoint for validation
-- Email uniqueness check (prevents duplicate accounts)
-- Built-in CORS support for frontend connection
-- JSON-based API responses
+Features:
+
+User Signup API with name, email, and password
+User Login API with proper credential validation
+MongoDB Storage using Mongoose models
+Email Uniqueness Check (no duplicate accounts allowed)
+Password Hashing with bcrypt for security
+CORS Support to allow connection from the React Native frontend
+Environment Variables (.env) to secure database credentials
+Clean JSON API Responses for easy frontend integration
+
+Tech Stack:
+
+Node.js
+Express.js
+MongoDB Atlas
+Mongoose
+bcryptjs
+dotenv
+CORS
